@@ -205,7 +205,7 @@
         <input 
           id="search-input" 
           type="text" 
-          placeholder="Digite o nome do álbum ou artista..." 
+          placeholder="Buscar qualquer álbum ou artista (ex: Blink, Gorillaz, Sum 41...)" 
           class="search-input flex-1"
           autocomplete="off" 
           autocorrect="off"
@@ -1465,20 +1465,37 @@
       return Object.values(dict);
     }
 
-    /* 1. BUSCA ESTRITA E EXCLUSIVA POR TÍTULO E ARTISTA (SEM FAIXA FAMOSA NO ÍNDICE) */
-    function searchAlbumsByCategory(query, categoryId, limit) {
-      var cat = categoryId || 'GERAL';
-      var lim = limit || 6;
+    /* 1. BUSCA GLOBAL EM TODO O CATÁLOGO (PERMITE PALPITAR QUALQUER ÁLBUM EM QUALQUER MODO) */
+    var CACHED_GLOBAL_ALBUMS = null;
+
+    function getGlobalAlbumsList() {
+      if (CACHED_GLOBAL_ALBUMS) return CACHED_GLOBAL_ALBUMS;
+      var map = {};
+      Object.keys(ALBUMS_BY_CATEGORY).forEach(function(cat) {
+        var dict = ALBUMS_BY_CATEGORY[cat];
+        Object.keys(dict).forEach(function(key) {
+          var album = dict[key];
+          var dedupeKey = normalizeText(album.titulo) + '___' + normalizeText(album.artista);
+          if (!map[dedupeKey]) {
+            map[dedupeKey] = album;
+          }
+        });
+      });
+      CACHED_GLOBAL_ALBUMS = Object.values(map);
+      return CACHED_GLOBAL_ALBUMS;
+    }
+
+    function searchGlobalAlbums(query, limit) {
+      var lim = limit || 7;
       var normQuery = normalizeText(query);
       if (!normQuery || normQuery.length < 1) return [];
 
-      var list = getAlbumsList(cat);
+      var list = getGlobalAlbumsList();
       var queryWords = normQuery.split(' ').filter(Boolean);
 
       var scored = list.map(function(album) {
         var titleNorm = normalizeText(album.titulo);
         var artistNorm = normalizeText(album.artista);
-        // Filtro estrito: apenas titulo e artista
         var combinedNorm = titleNorm + ' ' + artistNorm;
 
         var matchesAllWords = queryWords.every(function(w) {
@@ -2273,7 +2290,7 @@
 
       updateSearchPlaceholder() {
         var catConfig = CATEGORIES_CONFIG[this.engine.currentCategory] || CATEGORIES_CONFIG.GERAL;
-        this.elements.searchInput.placeholder = 'Buscar por álbum ou artista em ' + catConfig.label + '...';
+        this.elements.searchInput.placeholder = 'Buscar qualquer álbum ou artista no catálogo global...';
       }
 
       setupEventListeners() {
@@ -2374,7 +2391,7 @@
             that.closeSuggestions();
             return;
           }
-          that.currentSuggestions = searchAlbumsByCategory(query, that.engine.currentCategory, 6);
+          that.currentSuggestions = searchGlobalAlbums(query, 7);
           that.renderSuggestions();
         });
 
