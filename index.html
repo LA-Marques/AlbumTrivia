@@ -2173,24 +2173,56 @@
         this.showToast(this.engine.adminMode ? '🔧 ADMIN MODE ATIVADO!' : 'Admin Mode desativado');
       }
 
-      updateCoverBlur(withTransition) {
+      updateCoverBlur(isModeSwitch) {
+        var that = this;
         var count = this.engine.state.guesses.length;
         var isFinished = this.engine.state.status !== 'IN_PROGRESS';
         var targetUrl = this.engine.targetAlbum.cover_url;
         var targetBlurClass = isFinished ? 'blur-stage-6' : 'blur-stage-' + count;
 
-        for (var i = 0; i <= 6; i++) {
-          this.elements.coverImg.classList.remove('blur-stage-' + i);
-        }
-        this.elements.coverImg.classList.add(targetBlurClass);
+        if (isModeSwitch) {
+          this.elements.coverImg.classList.add('no-transition', 'is-loading');
 
-        if (isFinished) {
-          this.elements.vinylDisc.classList.add('eject');
+          for (var i = 0; i <= 6; i++) {
+            this.elements.coverImg.classList.remove('blur-stage-' + i);
+          }
+          this.elements.coverImg.classList.add(targetBlurClass);
+
+          if (isFinished) {
+            this.elements.vinylDisc.classList.add('eject');
+          } else {
+            this.elements.vinylDisc.classList.remove('eject');
+          }
+
+          var img = new Image();
+          img.src = targetUrl;
+          img.onload = function() {
+            that.elements.coverImg.src = targetUrl;
+            requestAnimationFrame(function() {
+              that.elements.coverImg.classList.remove('is-loading');
+              setTimeout(function() {
+                that.elements.coverImg.classList.remove('no-transition');
+              }, 60);
+            });
+          };
+          img.onerror = function() {
+            that.elements.coverImg.src = targetUrl;
+            that.elements.coverImg.classList.remove('is-loading', 'no-transition');
+          };
         } else {
-          this.elements.vinylDisc.classList.remove('eject');
-        }
+          for (var j = 0; j <= 6; j++) {
+            this.elements.coverImg.classList.remove('blur-stage-' + j);
+          }
+          this.elements.coverImg.classList.add(targetBlurClass);
 
-        this.elements.coverImg.src = targetUrl;
+          if (isFinished) {
+            this.elements.vinylDisc.classList.add('eject');
+          } else {
+            this.elements.vinylDisc.classList.remove('eject');
+          }
+
+          this.elements.coverImg.src = targetUrl;
+        }
       }
 
       renderInitialGrid() {
@@ -2512,7 +2544,7 @@
         }
 
         this.updateHeaderBadges();
-        this.updateCoverBlur(true);
+        this.updateCoverBlur(false);
 
         if (result.status === 'WON') {
           setTimeout(function() {
